@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.github.bijanzarean</groupId>
+    <artifactId>automation-test-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>Automation Test Framework</name>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Test dependency versions -->
+        <selenium.version>4.46.0</selenium.version>
+        <cucumber.version>7.34.4</cucumber.version>
+        <testng.version>7.12.0</testng.version>
+        <rest-assured.version>6.0.1</rest-assured.version>
+        <mysql.connector.version>9.7.0</mysql.connector.version>
+        <datafaker.version>2.7.0</datafaker.version>
+        <commons-codec.version>1.22.0</commons-codec.version>
+
+        <!-- Maven plugin versions -->
+        <maven.compiler.plugin.version>
+            3.15.0
+        </maven.compiler.plugin.version>
+
+        <maven.surefire.plugin.version>
+            3.5.6
+        </maven.surefire.plugin.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Browser automation -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Cucumber step definitions -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Run Cucumber using TestNG -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-testng</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test execution and assertions -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- REST API testing -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Optional but useful for OpenAPI/JSON schema tests -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+    Overrides the vulnerable Commons Codec 1.11 version
+    brought in transitively through:
+    REST Assured -> Apache HttpClient -> Commons Codec
+    Secure override for the older version brought in
+    through REST Assured's Apache HttpClient dependency.
+-->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>${commons-codec.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- MySQL JDBC driver -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.connector.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test-data generation -->
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <version>${datafaker.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Compile using the Java 21 language/API level -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>
+                    ${maven.compiler.plugin.version}
+                </version>
+            </plugin>
+
+            <!-- Execute TestNG and Cucumber tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>
+                    ${maven.surefire.plugin.version}
+                </version>
+
+                <configuration>
+                    <!-- Jenkins must fail when tests fail -->
+                    <testFailureIgnore>false</testFailureIgnore>
+
+                    <!-- Fail when a profile accidentally finds no tests -->
+                    <failIfNoTests>true</failIfNoTests>
+
+                    <!-- Preserve full stack traces in CI reports -->
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+    <profiles>
+
+    <!-- Default Selenium/Cucumber test execution -->
+    <profile>
+        <id>ui_tests</id>
+
+        <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>
+                        maven-surefire-plugin
+                    </artifactId>
+
+                    <configuration>
+                        <includes>
+                            <include>
+                                **/TestRunner.java
+                            </include>
+                        </includes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+
+        <!-- Check whether every gherkin step has a matching definition or not -->
+        <profile>
+            <id>dry_run</id>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+
+                        <configuration>
+                            <includes>
+                                <include>
+                                    **/DryRunner.java
+                                </include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    <!-- RestAssured and JDBC TestNG suite -->
+    <profile>
+        <id>api_tests</id>
+
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>
+                        maven-surefire-plugin
+                    </artifactId>
+
+                    <configuration>
+                        <suiteXmlFiles>
+                            <suiteXmlFile>
+                                ${project.basedir}/TestNG_APITests.xml
+                            </suiteXmlFile>
+                        </suiteXmlFiles>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    </profiles>
+
+</project>
