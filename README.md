@@ -70,3 +70,36 @@ Other tools used for end 2 end testing
 # Framework Architecture  
 The UI test flow follows this structure:  
 Feature file  
+↓  
+Cucumber Step Definition  
+↓  
+Selenium WebDriver  
+↓  
+Application Under Test  
+
+For tests that validate multiple application layers:  
+Cucumber Scenario  
+↓  
+Selenium UI Action  
+↓  
+Application backend  
+↓  
+MySQL Database  
+↓  
+JDBC Validation  
+  
+API Tests use RESTAssured to communicate directly with the application's REST endpoints without using the browser.  
+# Prerequisites  
+  Install the following before running the framework:  
+- Java JDK 21  
+- Maven  
+- Git  
+- A supported browser (Edge, Chrome, Safari, Firefox)  
+- MySQL if database tests are being executed.  
+  
+Verify Java:  
+java -version  
+
+Verify Maven:  
+mvn -version  
+
