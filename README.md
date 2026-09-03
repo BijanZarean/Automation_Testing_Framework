@@ -102,4 +102,134 @@ java -version
 
 Verify Maven:  
 mvn -version  
+  
+The Maven output should show Java 21.  
 
+# Clone the Repository  
+git clone https://github.com/BijanZarean/Automation_Testing_Framework.git  
+  Navigate into the project:  
+  cd Automation_Testing_Framework  
+  Install and compile dependencies:  
+  mvn clean test-compile  
+  Maven automatically downloads the framework dependencies declared in pom.xml  
+# Configuration
+  Framework configuration is stored in:
+  src/test/resource/test_data/env.properties  
+  Current configuration structure:  
+  base.url=http://localhost:4200  
+
+  broswer=chrome  
+
+  headless=false  
+
+  db.url=jdbc:mysql://localhost:3306/petclinic  
+  db.username=petclinic  
+  db.password=password  
+
+  DataReader.java loads this file once and makes its values available throughout the framework.  
+  Example:  
+  String url = DataReader.get("base.url");  
+  #Supported Browsers  
+  The framework currently supports:  
+  - Chrome  
+  - Firefox  
+  - Microsoft Edge
+  - Safari
+  - Set the browser in env.properties:
+  broswer=chrome
+Valid values: chrome, firefox, edge, safari
+The Driver utility creates and manages the appropriate Selenium WebDriver implementation.
+A browser window size of 1920x1080 is applied for consistent local and CI execution.
+# Headless Execution  
+Chrome, Firefox, and Edge support headless execution.  
+Configure:  
+headless=true  
+safari does not support headless execution in this framework and must use:  
+browser=safari  
+headless=false  
+You can also override the browser and headless setting from Maven without editing env.properties.  
+Example:  
+mvn clean test -Pui_tests -Dbrowser=firefox -Dheadless=true  
+System properties take precedence over the browser and headless values stored in env.properties.  
+#Running UI Tests  
+the default Maven profile is:  
+ui_tests  
+Run the complete UI suite:  
+mvn clean test  
+or explicitly:  
+mvn clean test -Pui_tests  
+The profile executes:  
+runners.TestRunner  
+TestRunner connects cucumber with TestNG and scans:  
+src/test/resources/features for feature files and step_definitions for step definitions and hooks.  
+# Running Tests by Cucumber Tag  
+Feature files use tags such as:  @ui @smoke @regression @owners @vet @owner1 @owner2 @owner3  
+Run only smoke tests:  
+mvn clean test -Pui_tests -Dcucumber.filter.tags="@smoke"  
+Run owner tests:  
+mvn clean test -Pui_tests -Dcucumber.filter.tags="@owners"  
+Run multiple required tags:  
+mvn clean test -Pui_tests -Dcucumber.filter.tags="@ui and @smoke"  
+Run either of two groups:  
+mvn clean test -Pui_tests -Dcucumber.filter.tags="@owners or @vet"  
+Exclude a tag:  
+mvn clean test -Pui_tests -Dcucumber.filter.tags="not @vet"  
+This allows suites to be changed from Maven or CI without modifying the Java Runner class.  
+# Cucumber Dry Run  
+The framework contains a dedicated Cucumber dry run profile.  
+Dry run checks whether every Gherkin step has a matching Java step definition without executing the Selenium test logic.  
+Run:  
+mvn clean test -Pdry_run  
+the profile executes: runners.DryRunner  
+Use this after adding or editing .feature files to identify undefined steps before running the browser tests.  
+Typical workflow:  
+Write Cucumber Scenario Step  
+↓  
+Run DryRunner  
+↓  
+Implement Missing Step Definitions  
+↓  
+Run DryRunner Again To Confirm  
+↓  
+Run UI Suite  
+#Feature Files  
+Feature files are stored in: src/test/resource/features/  
+Example Feature File:  
+@ui @smoke
+Feature: Petclinic home page  
+
+  Scenario: Main navigation is displayed  
+   Given I open the Petclinic application  
+   Then the Home and Owners navigation links should be displayed  
+   And the page heading should be "Welcome to Petclinic"  
+# Page Object Model  
+UI locators and page level actions are maintained in: src/test/java/pages/  
+The Page Object Model seperates browser interaction from tets logic.  
+For example:  
+PetClinicHomePage contains locators and actions associated with the home page, while PetClinicOwnersPage contains owner search, owner creation, and owner table behavior.  
+This prevents locators from being duplicated throughout step definition classes.  
+An example of the syntax used to declare a page element object:  
+private final By homeLink =  
+ By.xpath("//a[@title='home page']");  
+An example of a page action method:  
+public void navigateToVeterinarian() {  
+ wait.until(ExpectedConditions.visibilityOfElementLocated(veterinariansLink)).click();  
+ wait.until(ExpectedConditions.visibilityOfElementLocated(ownersDrpdwnSearchBtn)).click();  
+}  
+# Step Definitions  
+Cucumber step definitions are stored in: src/test/java/step_definitions/  
+Feature file statements are mapped to Java methods using annotations such as: @Given, @When, @Then  
+Example:  
+@Given("I open the Petclinic application")  
+public void i_open_thepetclinic_application() {  
+ String basURL = DataReader.get("base.url");  
+ Driver.getDriver().get(baseURL);  
+ homePage = new PetClinicHomePage(Driver.getDriver());  
+}  
+Step definitions should primarily coordinate:  
+- Page objects
+- Test data
+- Assertions
+- API utilities
+- Database utilities
+Browser locators should remain in page object classes rather 
