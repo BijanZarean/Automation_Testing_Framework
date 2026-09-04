@@ -232,4 +232,27 @@ Step definitions should primarily coordinate:
 - Assertions
 - API utilities
 - Database utilities
-Browser locators should remain in page object classes rather 
+Browser locators should remain in page object classes rather than step definition classes.  
+# Selenium Driver Management  
+Driver.java centrally controls WebDriver creation and cleanup.  
+Typical usage: Driver.getDriver();  
+The first call creates the configured browser. Additional calls during the same scenario return the existing WebDriver.  
+At scenario completion: Driver.quitDriver();  
+Closes the browser session and resets the stored driver reference.  
+# Parallel Execution  
+The current driver implementation stores a single static WebDriver instance.  
+This works for sequential test execution but is not currently thread safe fir parallel Selenium execution.  
+Before enabling parallel TestNG browser execution, the driver should be changed to use: ThreadLocal<WebDriver>  
+# Cucumber Hooks  
+Browser lifecycle management is implemented in: step_definitions/Hooks.java  
+The framework initializes WebDriver for before scenarios tagged with @ui  
+After each @ui scenario:  
+- A screenshot is captured if the scenario failed.  
+- The screenshot is attached to the Cucumber result.  
+- WebDriver is closed.  
+This prevents browser sessions from remaining open between scenarios.
+# Failure Screenshots  
+If an @ui scenario fails, the framework automatically captures a browser screenshot using 
+Selenium's TakesScreenshot interface.  
+The screenshot is attached directly to the Cucumber scenario result as: Failure screenshot.  
+This is useful when reviewing failures in generated reports or Continuous Integration execution.  
