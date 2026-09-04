@@ -1,4 +1,4 @@
-@ui @smoke
+@ui @smoke @home_test
 Feature: Petclinic home page
 
   Scenario: Main navigation is displayed
