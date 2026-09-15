@@ -17,6 +17,8 @@ import java.io.InputStream;
 //Reading a file can fail, so java requires the code to handle IOException. Examples include a
 //damaged resource or a problem while reading the stream:
 import java.io.IOException;
+//Used when cobverting variables such as db.password into DB_PASSWORD:
+import java.util.Locale;
 /*
 loads configuration values from:
 src/test/resources/test_data/env.properties
@@ -61,14 +63,44 @@ public final class DataReader {
     }
 //public static method to access through the class to retrieve configuration values:
     public static String get(String key) {
-//getProperty(key) searches the loaded properties for the supplied key:
-        String value = PROPERTIES.getProperty(key);
-//If the key is not found, it returns null, does not throw an error so we throw one ourselves if this occurs:
-        if (value==null || value.isBlank()) {
-            throw new IllegalArgumentException(
-              "Missing configuration property: "+key
-            );
+        /*
+        Priority 1:
+        Check for a Java system property.
+        Example:
+        -Dbase.url=http://localhost:4200
+         */
+        //Asks the JVM if the configuration value was supplied as a
+        // Java system property (mvn test -Pui_tests -Dheadless=true)
+        String systemProperty = System.getProperty(key);
+        if (systemProperty != null && !systemProperty.isBlank()) {
+            return systemProperty.trim();
         }
-        return value.trim();
+        /*
+        Priority 2:
+        Convert the properties style key into an
+        environment variable style key.
+        Example:
+        db.password -> DB_PASSWORD
+        export DB_PASSWORD='myLocalPassword'
+         */
+        //our java configration keys use db.password style while the env variables use DB_PASSWORD so we convert!
+        //"Locale.ROOT" is used to convert using a language neutral uppercase conversion:
+        String environmentKey = key.toUpperCase(Locale.ROOT).replace('.', '_');
+        //searches to see if we set an env variable with this name (export DB_PASSWORD='myLocalPassword'), for Jenkins:
+        String environmentValue = System.getenv(environmentKey);
+        if (environmentValue != null && !environmentValue.isBlank()) {
+            return environmentValue.trim();
+        }
+        /*
+        Priority 3:
+        Fall back to env.proprties file.
+         */
+        String propertyValue = PROPERTIES.getProperty(key);
+        if (propertyValue == null || propertyValue.isBlank()) {
+            throw new IllegalArgumentException("Missing configuration property: "+key);
+        }
+        return propertyValue.trim();
     }
+
+
 }
