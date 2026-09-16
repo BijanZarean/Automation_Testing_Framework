@@ -152,7 +152,7 @@ pipeline {
             junit(testResults: 'target/surefire-reports/TEST-*.xml',
                 allowEmptyResults: true
             )
-            archiveArtifacts(artificats: 'target/cucumber-reports/**',
+            archiveArtifacts(artifacts: 'target/cucumber-reports/**',
                 allowEmptyArchive: true,
                 fingerprint: true
             )
