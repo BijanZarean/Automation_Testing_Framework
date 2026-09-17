@@ -146,17 +146,17 @@ pipeline {
                         ? params.BROWSER : 'chrome'
 
                         def cucumberTags = params.CUCUMBER_TAGS?.trim()
-                        ? params.CUCUMBER_TAGS : '@regression'
+                        ? params.CUCUMBER_TAGS.trim() : '@regression'
 
                         echo "Browser: ${browser}"
                         echo "Cucumber Tag Filter: ${cucumberTags}"
 
                         withEnv([
-                            "EFFECTIVE_BROWSER=${browser}"
+                            "EFFECTIVE_BROWSER=${browser}",
                             "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
                             ]) {
                             sh '''
-                                mvn -B -ntp test -Pui_tests -Dbrowser="$BROWSER" -Dheadless=true -Dcucumber.filter.tags="$CUCUMBER_TAGS"
+                                mvn -B -ntp test -Pui_tests -Dbrowser="$EFFECTIVE_BROWSER" -Dheadless=true -Dcucumber.filter.tags="$EFFECTIVE_CUCUMBER_TAGS"
                                '''
                         }
                     }
