@@ -11,6 +11,8 @@ pipeline {
     options {
         timestamps()
 
+        skipDefaultCheckout(true)
+
         //This current framework / database is not designed for multiple
         //Jenkins builds running against an application simultaneously.pipeline
         disableConcurrentBuilds()
@@ -32,7 +34,7 @@ pipeline {
             defaultValue: true,
             description: 'Run REST Assured/TestNG API tests')
 
-        booleanParam(name: 'RUN_API',
+        booleanParam(name: 'RUN_UI',
             defaultValue: true,
             description: 'Run Selenium/Cucumber/TestNG UI tests')
     }
