@@ -114,7 +114,7 @@ pipeline {
         stage('API Tests') {
             when {
                 expression {
-                    return params.RUN_API
+                    return params.get('RUN_API', true)
                 }
             }
             steps {
@@ -132,7 +132,7 @@ pipeline {
         stage('UI Tests') {
             when {
                 expression {
-                    return params.RUN_UI
+                    return params.get('RUN_UI', true)
                 }
             }
             steps {
@@ -141,9 +141,25 @@ pipeline {
                         usernameVariable:'DB_USERNAME',
                         passwordVariable:'DB_PASSWORD')])
                 {
-                    sh '''
-                        mvn -B -ntp test -Pui_tests -Dbrowser="$BROWSER" -Dheadless=true -Dcucumber.filter.tags="$CUCUMBER_TAGS"
-                    '''
+                    script {
+                        def browser = params.BROWSER?.trim()
+                        ? params.BROWSER : 'chrome'
+
+                        def cucumberTags = params.CUCUMBER_TAGS?.trim()
+                        ? params.CUCUMBER_TAGS : '@regression'
+
+                        echo "Browser: ${browser}"
+                        echo "Cucumber Tag Filter: ${cucumberTags}"
+
+                        withEnv([
+                            "EFFECTIVE_BROWSER=${browser}"
+                            "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
+                            ]) {
+                            sh '''
+                                mvn -B -ntp test -Pui_tests -Dbrowser="$BROWSER" -Dheadless=true -Dcucumber.filter.tags="$CUCUMBER_TAGS"
+                               '''
+                        }
+                    }
                 }
             }
         }
