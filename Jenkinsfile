@@ -11,6 +11,8 @@ pipeline {
     options {
         timestamps()
 
+        skipDefaultCheckout(true)
+
         //This current framework / database is not designed for multiple
         //Jenkins builds running against an application simultaneously.pipeline
         disableConcurrentBuilds()
@@ -32,7 +34,7 @@ pipeline {
             defaultValue: true,
             description: 'Run REST Assured/TestNG API tests')
 
-        booleanParam(name: 'RUN_API',
+        booleanParam(name: 'RUN_UI',
             defaultValue: true,
             description: 'Run Selenium/Cucumber/TestNG UI tests')
     }
@@ -112,7 +114,7 @@ pipeline {
         stage('API Tests') {
             when {
                 expression {
-                    return params.RUN_API
+                    return params.get('RUN_API', true)
                 }
             }
             steps {
@@ -130,7 +132,7 @@ pipeline {
         stage('UI Tests') {
             when {
                 expression {
-                    return params.RUN_UI
+                    return params.get('RUN_UI', true)
                 }
             }
             steps {
@@ -139,9 +141,25 @@ pipeline {
                         usernameVariable:'DB_USERNAME',
                         passwordVariable:'DB_PASSWORD')])
                 {
-                    sh '''
-                        mvn -B -ntp test -Pui_tests -Dbrowser="$BROWSER" -Dheadless=true -Dcucumber.filter.tags="$CUCUMBER_TAGS"
-                    '''
+                    script {
+                        def browser = params.BROWSER?.trim()
+                        ? params.BROWSER : 'chrome'
+
+                        def cucumberTags = params.CUCUMBER_TAGS?.trim()
+                        ? params.CUCUMBER_TAGS.trim() : '@regression'
+
+                        echo "Browser: ${browser}"
+                        echo "Cucumber Tag Filter: ${cucumberTags}"
+
+                        withEnv([
+                            "EFFECTIVE_BROWSER=${browser}",
+                            "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
+                            ]) {
+                            sh '''
+                                mvn -B -ntp test -Pui_tests -Dbrowser="$EFFECTIVE_BROWSER" -Dheadless=true -Dcucumber.filter.tags="$EFFECTIVE_CUCUMBER_TAGS"
+                               '''
+                        }
+                    }
                 }
             }
         }

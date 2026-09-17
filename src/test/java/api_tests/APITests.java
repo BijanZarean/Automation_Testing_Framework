@@ -46,16 +46,16 @@ public class APITests {
         Verifying the response returned is successful and has content.
         log().all() logs the response returned such as the response body / headers and the status code:
          */
-        .then().log().all().statusCode(200).body("size()", greaterThan(0))
+        .then().statusCode(200).body("size()", greaterThan(0))
                 .body(matchesJsonSchemaInClasspath("schemas/all_owners_schema.json"));
     }
 
     @Test
     public void getOwnerByID() {
         int ownerID = 1;
-        given().log().all().accept("application/json")
+        given().accept("application/json")
                 .when().get("/owners/"+ownerID)
-                .then().log().all().statusCode(200).body("id", equalTo(ownerID))
+                .then().statusCode(200).body("id", equalTo(ownerID))
                 .body("firstName", equalTo("George"))
                 .body(matchesJsonSchemaInClasspath("schemas/owner_by_id_schema.json"));
     }
@@ -78,9 +78,9 @@ public class APITests {
                 "  \"telephone\": \""+telephone+"\"\n" +
                 "}";
         System.out.println(requestBody);
-        Response response = given().log().all().body(requestBody).contentType("application/json")
+        Response response = given().body(requestBody).contentType("application/json")
                 .when().post("/owners");
-        response.then().log().all().statusCode(201).body("firstName", equalTo(firstName))
+        response.then().statusCode(201).body("firstName", equalTo(firstName))
                 .body("lastName", equalTo(lastName)).body("address", equalTo(address))
                 .body("telephone", equalTo(telephone))
                 .body(matchesJsonSchemaInClasspath("schemas/create_owner_schema.json"));
@@ -90,11 +90,11 @@ public class APITests {
     @Test
     public void deleteOwner() {
         System.out.println(ownerID);
-        given().log().all().accept("application/json")
+        given().accept("application/json")
                 .when().delete("/owners/"+ownerID)
-                .then().log().all().statusCode(204);
-        given().log().all().accept("application/json")
+                .then().statusCode(204);
+        given().accept("application/json")
                 .when().get("/owners/"+ownerID)
-                .then().log().all().statusCode(404);
+                .then().statusCode(404);
     }
 }
