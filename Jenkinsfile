@@ -112,7 +112,7 @@ pipeline {
         stage('API Tests') {
             when {
                 expression {
-                    return parms.RUN_API
+                    return params.RUN_API
                 }
             }
             steps {
