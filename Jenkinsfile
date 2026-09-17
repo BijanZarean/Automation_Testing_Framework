@@ -111,53 +111,69 @@ pipeline {
                 '''
             }
         }
-        stage('API Tests') {
+        stage('Petclinic Regression Tests') {
             when {
+                beforeOptions true
                 expression {
-                    return params.get('RUN_API', true)
+                    return params.RUN_API || params.RUN_UI
                 }
             }
-            steps {
-                withCredentials([
-                    usernamePassword(credentialsId:'petclinic-db',
-                        usernameVariable:'DB_USERNAME',
-                        passwordVariable:'DB_PASSWORD')])
-                {
-                    sh '''
+            options {
+                lock(
+                    resource: 'petclinic-local-env',
+                    reason: 'Running Petclinic integration tests'
+                )
+            }
+            stages {
+                stage('API Tests') {
+                    when {
+                        expression {
+                            return params.get('RUN_API', true)
+                        }
+                    }
+                    steps {
+                        withCredentials([
+                                usernamePassword(credentialsId:'petclinic-db',
+                                    usernameVariable:'DB_USERNAME',
+                                    passwordVariable:'DB_PASSWORD')])
+                        {
+                            sh '''
                         mvn -B -ntp test -Papi_tests
                     '''
+                        }
+                    }
                 }
-            }
-        }
-        stage('UI Tests') {
-            when {
-                expression {
-                    return params.get('RUN_UI', true)
-                }
-            }
-            steps {
-                withCredentials([
-                        usernamePassword(credentialsId:'petclinic-db',
-                        usernameVariable:'DB_USERNAME',
-                        passwordVariable:'DB_PASSWORD')])
-                {
-                    script {
-                        def browser = params.BROWSER?.trim()
-                        ? params.BROWSER : 'chrome'
+                stage('UI Tests') {
+                    when {
+                        expression {
+                            return params.get('RUN_UI', true)
+                        }
+                    }
+                    steps {
+                        withCredentials([
+                                usernamePassword(credentialsId:'petclinic-db',
+                                    usernameVariable:'DB_USERNAME',
+                                    passwordVariable:'DB_PASSWORD')])
+                        {
+                            script {
+                                def browser = params.BROWSER?.trim()
+                                ? params.BROWSER : 'chrome'
 
-                        def cucumberTags = params.CUCUMBER_TAGS?.trim()
-                        ? params.CUCUMBER_TAGS.trim() : '@regression'
+                                def cucumberTags = params.CUCUMBER_TAGS?.trim()
+                                ? params.CUCUMBER_TAGS.trim() : '@regression'
 
-                        echo "Browser: ${browser}"
-                        echo "Cucumber Tag Filter: ${cucumberTags}"
+                                echo "Browser: ${browser}"
+                                echo "Cucumber Tag Filter: ${cucumberTags}"
 
-                        withEnv([
-                            "EFFECTIVE_BROWSER=${browser}",
-                            "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
-                            ]) {
-                            sh '''
+                                withEnv([
+                                        "EFFECTIVE_BROWSER=${browser}",
+                                        "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
+                                    ]) {
+                                    sh '''
                                 mvn -B -ntp test -Pui_tests -Dbrowser="$EFFECTIVE_BROWSER" -Dheadless=true -Dcucumber.filter.tags="$EFFECTIVE_CUCUMBER_TAGS"
                                '''
+                                }
+                            }
                         }
                     }
                 }
