@@ -224,6 +224,28 @@
             </plugins>
         </build>
     </profile>
+
+    <profile>
+        <id>api_smoke</id>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>
+                        maven-surefire-plugin
+                    </artifactId>
+
+                    <configuration>
+                        <suiteXmlFiles>
+                            <suiteXmlFile>
+                                ${project.basedir}/TestNG_APISmoke.xml
+                            </suiteXmlFile>
+                        </suiteXmlFiles>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
     </profiles>
 
 </project>

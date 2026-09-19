@@ -1,7 +1,7 @@
-@ui @smoke @vet
+@ui @regression @vet
 Feature: Petclinic home page
 
-  @ui @smoke @vet1
+  @ui @regression @vetTest1
   Scenario: Open the Veterinarians page
   Given I open the Petclinic application
   When I open the Veterinarians page

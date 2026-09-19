@@ -25,18 +25,6 @@ pipeline {
         choice(name: 'BROWSER',
             choices: ['chrome', 'firefox'],
             description: 'Browser used for Selenium UI testing')
-
-        string(name: 'CUCUMBER_TAGS',
-            defaultValue: '@regression',
-            description: 'Cucumber tag expression to execute')
-
-        booleanParam(name: 'RUN_API',
-            defaultValue: true,
-            description: 'Run REST Assured/TestNG API tests')
-
-        booleanParam(name: 'RUN_UI',
-            defaultValue: true,
-            description: 'Run Selenium/Cucumber/TestNG UI tests')
     }
 
     environment {
@@ -111,7 +99,7 @@ pipeline {
                 '''
             }
         }
-        stage('Petclinic Regression Tests') {
+        stage('Petclinic smoke Tests') {
             when {
                 beforeOptions true
                 expression {
@@ -125,57 +113,56 @@ pipeline {
                 )
             }
             stages {
-                stage('API Tests') {
+                stage('PR API Smoke Tests') {
                     when {
-                        expression {
-                            return params.get('RUN_API', true)
-                        }
+                        changeRequest()
                     }
                     steps {
                         withCredentials([
-                                usernamePassword(credentialsId:'petclinic-db',
-                                    usernameVariable:'DB_USERNAME',
-                                    passwordVariable:'DB_PASSWORD')])
-                        {
+                            usernamePassword(
+                                    credentialsId: 'petclinic-db',
+                                    usernameVariable: 'DB_USERNAME',
+                                    passwordVariable: 'DB_PASSWORD'
+                                )]) {
                             sh '''
-                        mvn -B -ntp test -Papi_tests
-                    '''
+                                mvn -B -ntp test -Papi_smoke
+                            '''
                         }
                     }
                 }
-                stage('UI Tests') {
+                stage('PR UI Smoke Tests') {
                     when {
-                        expression {
-                            return params.get('RUN_UI', true)
-                        }
+                        changeRequest()
                     }
                     steps {
                         withCredentials([
-                                usernamePassword(credentialsId:'petclinic-db',
-                                    usernameVariable:'DB_USERNAME',
-                                    passwordVariable:'DB_PASSWORD')])
-                        {
-                            script {
-                                def browser = params.BROWSER?.trim()
-                                ? params.BROWSER : 'chrome'
-
-                                def cucumberTags = params.CUCUMBER_TAGS?.trim()
-                                ? params.CUCUMBER_TAGS.trim() : '@regression'
-
-                                echo "Browser: ${browser}"
-                                echo "Cucumber Tag Filter: ${cucumberTags}"
-
-                                withEnv([
-                                        "EFFECTIVE_BROWSER=${browser}",
-                                        "EFFECTIVE_CUCUMBER_TAGS=${cucumberTags}"
-                                    ]) {
-                                    sh '''
-                                mvn -B -ntp test -Pui_tests -Dbrowser="$EFFECTIVE_BROWSER" -Dheadless=true -Dcucumber.filter.tags="$EFFECTIVE_CUCUMBER_TAGS"
-                               '''
-                                }
-                            }
+                            usernamePassword(
+                                    credentialsId: 'petclinic-db',
+                                    usernameVariable: 'DB_USERNAME',
+                                    passwordVariable: 'DB_PASSWORD'
+                                )]) {
+                            sh '''
+                                mvn -B -ntp test -Pui_tests -Dbrowser=chrome -Dheadless=true -Dcucumber.filter.tags="@smoke"
+                            '''
                         }
                     }
+                }
+            }
+        }
+        stage('Main UI Regression') {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([
+                    usrnamePassword(
+                            credentialsId: 'petclinic-db',
+                            usernameVariable: 'DB_USERNAME',
+                            passwordVariable: 'DB_PASSWORD'
+                        )]) {
+                    sh '''
+                        mvn -ntp test -Pui_tests -Dbrowser=chrome -Dheadless=true -Dcucumber.filter.tags="@regression"
+                    '''
                 }
             }
         }

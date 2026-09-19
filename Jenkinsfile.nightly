@@ -1,0 +1,109 @@
+pipeline {
+    agent {
+        label 'petclinic-test-agent'
+    }
+    tools {
+        jdk 'JDK21'
+        maven 'Maven3'
+    }
+    triggers {
+        //Once every night during the 2 AM hour.pipeline {
+        //Jenkins chooses a stable minute using H.pipeline {
+            cron('H 2 * * *')
+        }
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(
+            time: 60,
+            unit: 'MINUTES'
+        )
+    }
+    environment {
+        BASE_URL = 'http://localhost:4200'
+        API_BASE_URL = 'http://localhost:9966/petclinic/api'
+        DB_URL = 'jdbc:mysql://localhost:3306/petclinic'
+        API_HEALTH_URL = 'http://localhost:9966/petclinic/actuator/health'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Compile') {
+            steps {
+                sh '''
+                    mvn -B -ntp clean test-compile
+                '''
+            }
+        }
+        stage('Nightly Regression') {
+            options {
+                lock(
+                    resource: 'petclinic-local-env',
+                    reason: 'Nightly Petclinic regression'
+                ) {
+                    stages {
+                        stage('Verify Petclinic') {
+                            steps {
+                                sh '''
+                                curl --fail --silent --show-error "$BASE_URL" > /dev/null
+                                curl --fail --silent --show-error "$API_HEALTH_URL"
+                            '''
+                            }
+                        }
+                        stage('API Regression') {
+                            steps {
+                                withCredentials([
+                                        usernamePassword(
+                                            credentialsId: 'petclinic-db',
+                                            usernameVariable: 'DB_USERNAME',
+                                            passwordVariable: 'DB_PASSWORD'
+                                        )]) {
+                                    sh '''
+                        mvn -B -ntp test -Papi_tests
+                    '''
+                                }
+                            }
+                        }
+                        stage('Chrome UI Regression') {
+                            steps {
+                                withCredentials([
+                                        usernamePassword(
+                                            credentialsId: 'petclinic-db',
+                                            usernameVariable: 'DB_USERNAME',
+                                            passwordVariable: 'DB_PASSWORD'
+                                        )]) {
+                                    sh '''
+                        mvn -B -ntp test -Pui_tests -Dheadless=true -Dbrowser=chrome -Dcucumber.filter.tags="@regression"
+                    '''
+                                }
+                            }
+                        }
+                        stage('Firefox UI Regression') {
+                            steps {
+                                withCredentials([
+                                        usernamePassword(
+                                            credentialsId: 'petclinic-db',
+                                            usernameVariable: 'DB_USERNAME',
+                                            passwordVariable: 'DB_PASSWORD'
+                                        )]) {
+                                    sh '''
+                        mvn -B -ntp test -Pui_tests -Dheadless=true -Dbrowser=firefox -Dcucumber.filter.tags="@regression"
+                    '''
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            junit(testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: false)
+            archiveArtifacts(artifacts: 'target/cucumber-reports/**', allowEmptyArchive: true, fingerprint: true)
+        }
+    }
+}
