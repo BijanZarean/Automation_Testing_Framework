@@ -43,7 +43,7 @@ pipeline {
                 lock(
                     resource: 'petclinic-local-env',
                     reason: 'Nightly Petclinic regression'
-                ) {
+                ) }
                     stages {
                         stage('Verify Petclinic') {
                             steps {
@@ -98,8 +98,6 @@ pipeline {
                     }
                 }
             }
-        }
-    }
     post {
         always {
             junit(testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: false)
