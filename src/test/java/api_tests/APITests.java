@@ -17,7 +17,7 @@ public class APITests {
     reads the api.base.url variable in env.properties file and tells REST Assured that every API request in
     this class starts at this base URI:
      */
-    @BeforeClass
+    @BeforeClass(groups = {"smoke", "regression"})
     public void setup() {
         RestAssured.baseURI = DataReader.get("api.base.url");
     }
@@ -29,7 +29,7 @@ public class APITests {
     then() -> validate the HTTP response.
      */
 
-    @Test
+    @Test(groups = {"smoke", "regression"})
     public void getAllOwners() {
         /*
         inside given() we can add headers, parameters, body content, authentication, cookies, and other
@@ -50,7 +50,7 @@ public class APITests {
                 .body(matchesJsonSchemaInClasspath("schemas/all_owners_schema.json"));
     }
 
-    @Test
+    @Test(groups = {"smoke", "regression"})
     public void getOwnerByID() {
         int ownerID = 1;
         given().accept("application/json")
@@ -68,7 +68,7 @@ public class APITests {
 
     private int ownerID;
 
-    @Test
+    @Test(groups = {"regression"})
     public void createOwner() {
         String requestBody = "{\n" +
                 "  \"firstName\": \""+firstName+"\",\n" +
@@ -87,7 +87,7 @@ public class APITests {
         ownerID = response.jsonPath().getInt("id");
     }
 
-    @Test
+    @Test(groups = {"regression"})
     public void deleteOwner() {
         System.out.println(ownerID);
         given().accept("application/json")
