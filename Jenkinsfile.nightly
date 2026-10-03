@@ -1,19 +1,35 @@
+//Root Declaritive Pipeline block.
 pipeline {
+    //Run nightly regression on the dedicated agent.
     agent {
         label 'petclinic-test-agent'
     }
+    //Provide Java and Maven
     tools {
         jdk 'JDK21'
         maven 'Maven3'
     }
+    //Unlike the Multibranch Jenkinsfile, this job has a timer
     triggers {
-        //Once every night during the 2 AM hour.pipeline {
-        //Jenkins chooses a stable minute using H.pipeline {
+        //Jenkins cron has 5 positions
+        //MINUTE HOUR DAY-OF-MONTH MONTH DAY-OF-WEEK
+        //'H' Jenkins chooses one stable hashed minute
+        //'2' during the 2 AM hour
+        //'*' every day of the month
+        //'*' every month
+        //'*' every day of the week
+        //So this job will run once each day at a stable minute somehwere between 2:00 and 2:59 AM
             cron('H 2 * * *')
         }
     options {
+        //Show timestamps for each line in the console output
         timestamps()
+        //Jenkins normally pull the git repository into the Jenkins workspace but we perform this manually later
+        //with 'checkout scm'
+        skipDefaultCheckout(true)
+        //Don't let two executions of THIS nightly job overlap.
         disableConcurrentBuilds()
+        //Because this kicks of regression test for chrome + firefox + API, we provide more time.
         timeout(
             time: 60,
             unit: 'MINUTES'
@@ -26,33 +42,51 @@ pipeline {
         API_HEALTH_URL = 'http://localhost:9966/petclinic/actuator/health'
     }
     stages {
+        // CHECKOUT MAIN
         stage('Checkout') {
             steps {
+                //Because this regular pipeline jobe is configured
+                //"Pipeline script from SCM" against main,
+                //scm represents that configured source repository/branch.
                 checkout scm
             }
         }
+        // COMPILE
         stage('Compile') {
             steps {
                 sh '''
+# Start from a clean target/ and compile everything.
                     mvn -B -ntp clean test-compile
                 '''
             }
         }
+        //PARENT NIGHTLY REGRESSION STAGE
         stage('Nightly Regression') {
             options {
+                //Aquire the SAME shared environment used by
+                //the PR and main pipelines (multibranch)
+                //This setting is what prevents:
+                //nightly + PR
+                //nightly + main
+                //from modifying the Petclinic database concurrently.
                 lock(
                     resource: 'petclinic-local-env',
                     reason: 'Nightly Petclinic regression'
                 ) }
+            //Every nested stage runs while Nightly Regression holds that lock.
                     stages {
+                //HEALTH CHECK
                         stage('Verify Petclinic') {
                             steps {
                                 sh '''
+#Verify that Angular frontend responds.
                                 curl --fail --silent --show-error "$BASE_URL" > /dev/null
+#Verify backend reports healthy status.
                                 curl --fail --silent --show-error "$API_HEALTH_URL"
                             '''
                             }
                         }
+                //API REGRESSION
                         stage('API Regression') {
                             steps {
                                 withCredentials([
@@ -62,11 +96,13 @@ pipeline {
                                             passwordVariable: 'DB_PASSWORD'
                                         )]) {
                                     sh '''
+#Full TestNG / REST Assured API suite
                         mvn -B -ntp test -Papi_tests
                     '''
                                 }
                             }
                         }
+                //CHROME REGRESSION
                         stage('Chrome UI Regression') {
                             steps {
                                 withCredentials([
@@ -76,11 +112,13 @@ pipeline {
                                             passwordVariable: 'DB_PASSWORD'
                                         )]) {
                                     sh '''
+#Full UI regression: Chrome headless @regression scenarios
                         mvn -B -ntp test -Pui_tests -Dheadless=true -Dbrowser=chrome -Dcucumber.filter.tags="@regression"
                     '''
                                 }
                             }
                         }
+                //FIREFOX REGRESSION
                         stage('Firefox UI Regression') {
                             steps {
                                 withCredentials([
@@ -90,6 +128,8 @@ pipeline {
                                             passwordVariable: 'DB_PASSWORD'
                                         )]) {
                                     sh '''
+#Run the SAME regression scenarios again, but against Firefox
+#This introduces cross browser regression coverage:
                         mvn -B -ntp test -Pui_tests -Dheadless=true -Dbrowser=firefox -Dcucumber.filter.tags="@regression"
                     '''
                                 }
@@ -98,9 +138,15 @@ pipeline {
                     }
                 }
             }
+    //REPORTING
     post {
         always {
+            //Publish Surefire XML results.
+            //Here you use false:
+            //If Jenkins reaches reporting ano result files exist,
+            //reporting and no result files exist.
             junit(testResults: 'target/surefire-reports/TEST-*.xml', allowEmptyResults: false)
+            //Preserve generated Cucumber reports.
             archiveArtifacts(artifacts: 'target/cucumber-reports/**', allowEmptyArchive: true, fingerprint: true)
         }
     }
